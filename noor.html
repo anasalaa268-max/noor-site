@@ -1278,3 +1278,115 @@ function renderAzkar(type){
     <div class="card">
       <div class="zekr-text">${item[0]}</div>
       <div style="display:flex;justify-content:space-between;align-items:cen
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
+        <span class="muted">التكرار: <b>${toAr(item[1])}</b></span>
+        <button class="btn outline small" data-done type="button">تم ✓</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ===== السبحة ===== */
+const TASBIH_LIST = ['سبحان الله', 'الحمد لله', 'لا إله إلا الله', 'الله أكبر', 'أستغفر الله', 'لا حول ولا قوة إلا بالله'];
+let tasbihIndex = 0;
+let sebhaCount = Number(localStorage.getItem('sebhaCount') || 0);
+let sebhaTotal = Number(localStorage.getItem('sebhaTotal') || 0);
+
+function updateSebha(){
+  $('#zekrName').textContent = TASBIH_LIST[tasbihIndex];
+  $('#sebhaCount').textContent = toAr(sebhaCount);
+  $('#sebhaTotal').textContent = toAr(sebhaTotal);
+}
+
+function tasbih(){
+  sebhaCount++;
+  sebhaTotal++;
+  localStorage.setItem('sebhaCount', sebhaCount);
+  localStorage.setItem('sebhaTotal', sebhaTotal);
+  updateSebha();
+  if(navigator.vibrate) navigator.vibrate(40);
+}
+
+function nextZekr(){
+  tasbihIndex = (tasbihIndex + 1) % TASBIH_LIST.length;
+  sebhaCount = 0;
+  localStorage.setItem('sebhaCount', 0);
+  updateSebha();
+}
+
+function resetSebha(){
+  sebhaCount = 0;
+  sebhaTotal = 0;
+  localStorage.setItem('sebhaCount', 0);
+  localStorage.setItem('sebhaTotal', 0);
+  updateSebha();
+  toast('تم تصفير السبحة');
+}
+
+/* ===== الصلاة والإشعارات ===== */
+function fillCitySelect(){
+  const html = CITIES.map((c, i) => `<option value="${i}">${c.ar}</option>`).join('') + '<option value="custom">مدينة أخرى...</option>';
+  $('#citySelect').innerHTML = html;
+  const saved = localStorage.getItem('cityIndex') || '0';
+  $('#citySelect').value = saved;
+}
+
+function onCitySelectChange(){
+  const val = $('#citySelect').value;
+  $('#customCityBox').style.display = (val === 'custom') ? 'block' : 'none';
+}
+
+function saveCity(){
+  const val = $('#citySelect').value;
+  localStorage.setItem('cityIndex', val);
+  toast('تم حفظ المدينة');
+  initPrayer();
+}
+
+async function initPrayer(){
+  const idx = localStorage.getItem('cityIndex') || '0';
+  let cityObj = CITIES[idx] || CITIES[0];
+  try{
+    const res = await fetch(`https://api.aladhan.com/v1/timingsByCity?city=${cityObj.city}&country=${cityObj.country}&method=${cityObj.method}`);
+    const json = await res.json();
+    if(json.data){
+      state.timings = json.data.timings;
+      renderPrayerBox();
+    }
+  }catch(e){}
+}
+
+function renderPrayerBox(){
+  if(!state.timings) return;
+  let html = '';
+  PRAYERS.forEach(p => {
+    const time = state.timings[p.key] || '--:--';
+    html += `
+      <div class="prayer-row">
+        <span>${p.icon} ${p.ar}</span>
+        <b>${time}</b>
+      </div>
+    `;
+  });
+  $('#prayerBox').innerHTML = html;
+}
+
+function onNotifyToggle(e){
+  if(e.target.checked && Notification.permission !== 'granted'){
+    Notification.requestPermission();
+  }
+}
+
+function hidePrayerNotify(){
+  $('#prayerNotify').classList.remove('show');
+}
+
+function toast(msg){
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+</script>
+</body>
+</html>
